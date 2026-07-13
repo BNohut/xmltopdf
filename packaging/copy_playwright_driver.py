@@ -77,6 +77,31 @@ def main() -> int:
         # ditto, .app/.framework yapilarini ve kod imzalarini cp -R'den
         # daha guvenilir korur.
         subprocess.run(["ditto", str(driver_src), str(dest)], check=True)
+
+        # PyInstaller, BUNDLE adiminda .app'i ZATEN imzalamisti (icindekilerin
+        # bir "muhur"unu olusturdu). Buraya sonradan dosya eklemek o muhuru
+        # gecersiz kilar ve Gatekeeper "is damaged and can't be opened" der
+        # (codesign --verify: "a sealed resource is missing or invalid").
+        # Cozum: TUM icerik eklendikten SONRA butun bundle'i --deep ile
+        # yeniden imzalamak. --deep, ic ice Chrome.app/Framework yapisini da
+        # kendi (bagimsiz gecerli) imzasiyla birlikte dogru sekilde
+        # isliyor - PyInstaller'in kendi otomatik, tek-tek-Mach-O imzalama
+        # adiminin (bkz. spec dosyasindaki _without_playwright_driver notu)
+        # aksine.
+        print(f"Yeniden imzalaniyor (ad-hoc, --deep): {bundle_root}")
+        subprocess.run(
+            ["codesign", "--force", "--deep", "--sign", "-", str(bundle_root)],
+            check=True,
+        )
+        verify = subprocess.run(
+            ["codesign", "--verify", "--deep", "--strict", str(bundle_root)],
+            capture_output=True,
+            text=True,
+        )
+        if verify.returncode != 0:
+            print(f"HATA: yeniden imzalama sonrasi dogrulama basarisiz:\n{verify.stderr}")
+            return 1
+        print("Imza dogrulandi.")
     else:
         shutil.copytree(driver_src, dest)
 
