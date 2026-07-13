@@ -68,6 +68,8 @@ class App(tk.Tk):
         self.input_dir = tk.StringVar()
         self.output_dir = tk.StringVar()
         self.use_default_output = tk.BooleanVar(value=True)
+        self.xslt_path = tk.StringVar()
+        self.use_default_xslt = tk.BooleanVar(value=True)
         self.status_text = tk.StringVar(value="Hazir.")
 
         self._log_queue: "queue.Queue[str]" = queue.Queue()
@@ -118,6 +120,31 @@ class App(tk.Tk):
         self.output_browse_btn.pack(side="left")
         self._toggle_output_entry()
 
+        frame_xslt_toggle = tk.Frame(self, bg=BG)
+        frame_xslt_toggle.pack(fill="x", **pad)
+        tk.Checkbutton(
+            frame_xslt_toggle,
+            text="Varsayilan berat.xslt sablonunu kullan (onerilen)",
+            variable=self.use_default_xslt,
+            command=self._toggle_xslt_entry,
+            bg=BG, fg=FG, selectcolor=ENTRY_BG, activebackground=BG, activeforeground=FG,
+        ).pack(side="left")
+
+        self.frame_xslt = tk.Frame(self, bg=BG)
+        self.frame_xslt.pack(fill="x", **pad)
+        tk.Label(self.frame_xslt, text="XSLT sablonu:", bg=BG, fg=FG).pack(side="left")
+        self.xslt_entry = tk.Entry(
+            self.frame_xslt, textvariable=self.xslt_path, bg=ENTRY_BG, fg=FG,
+            insertbackground=FG, disabledforeground=FG,
+        )
+        self.xslt_entry.pack(side="left", fill="x", expand=True, padx=6)
+        self.xslt_browse_btn = tk.Button(
+            self.frame_xslt, text="Gozat...", command=self._pick_xslt_file, bg=BG, fg=FG,
+            highlightbackground=BG,
+        )
+        self.xslt_browse_btn.pack(side="left")
+        self._toggle_xslt_entry()
+
         frame_actions = tk.Frame(self, bg=BG)
         frame_actions.pack(fill="x", **pad)
         self.start_btn = tk.Button(
@@ -148,6 +175,11 @@ class App(tk.Tk):
         self.output_entry.configure(state=state)
         self.output_browse_btn.configure(state=state)
 
+    def _toggle_xslt_entry(self):
+        state = "disabled" if self.use_default_xslt.get() else "normal"
+        self.xslt_entry.configure(state=state)
+        self.xslt_browse_btn.configure(state=state)
+
     def _pick_input_dir(self):
         chosen = filedialog.askdirectory(title="Kaynak klasoru secin")
         if chosen:
@@ -157,6 +189,14 @@ class App(tk.Tk):
         chosen = filedialog.askdirectory(title="Cikti klasoru secin")
         if chosen:
             self.output_dir.set(chosen)
+
+    def _pick_xslt_file(self):
+        chosen = filedialog.askopenfilename(
+            title="XSLT sablonu secin",
+            filetypes=[("XSLT dosyalari", "*.xslt *.xsl"), ("Tum dosyalar", "*.*")],
+        )
+        if chosen:
+            self.xslt_path.set(chosen)
 
     def _log(self, message: str):
         self._log_queue.put(message)
@@ -183,12 +223,23 @@ class App(tk.Tk):
             messagebox.showerror("Hata", "Secilen kaynak klasor bulunamadi.")
             return
 
-        if not DEFAULT_XSLT_PATH.is_file():
-            messagebox.showerror(
-                "Eksik dosya",
-                f"berat.xslt bulunamadi: {DEFAULT_XSLT_PATH}",
-            )
-            return
+        if self.use_default_xslt.get():
+            xslt_path = DEFAULT_XSLT_PATH
+            if not xslt_path.is_file():
+                messagebox.showerror(
+                    "Eksik dosya",
+                    f"berat.xslt bulunamadi: {xslt_path}",
+                )
+                return
+        else:
+            xslt_dir = self.xslt_path.get().strip()
+            if not xslt_dir:
+                messagebox.showwarning("Eksik bilgi", "Bir XSLT sablonu secin.")
+                return
+            xslt_path = Path(xslt_dir)
+            if not xslt_path.is_file():
+                messagebox.showerror("Hata", "Secilen XSLT dosyasi bulunamadi.")
+                return
 
         if self.use_default_output.get():
             output_path = default_output_root(input_path)
@@ -211,7 +262,7 @@ class App(tk.Tk):
 
         self._worker_thread = threading.Thread(
             target=self._run_conversion,
-            args=(input_path, output_path),
+            args=(input_path, output_path, xslt_path),
             daemon=True,
         )
         self._worker_thread.start()
@@ -220,7 +271,7 @@ class App(tk.Tk):
         self._stop_requested = True
         self.status_text.set("Iptal isteniyor, mevcut dosya bitince duracak...")
 
-    def _run_conversion(self, input_path: Path, output_path: Path):
+    def _run_conversion(self, input_path: Path, output_path: Path, xslt_path: Path):
         def on_progress(result, index, total):
             self.progress.set_progress(index, maximum=max(total, 1))
             rel = result.xml_path.relative_to(input_path)
@@ -234,7 +285,7 @@ class App(tk.Tk):
             summary = convert_folder(
                 input_root=input_path,
                 output_root=output_path,
-                xslt_path=DEFAULT_XSLT_PATH,
+                xslt_path=xslt_path,
                 progress_callback=on_progress,
                 should_stop=lambda: self._stop_requested,
             )
