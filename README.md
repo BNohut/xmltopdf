@@ -72,9 +72,13 @@ Acilan pencerede:
 2. Varsayilan olarak cikti, kaynak klasorun icinde `PDF_Ciktilari` adiyla
    olusturulur. Farkli bir yer istiyorsaniz ust kutucuktaki isareti kaldirip
    kendi cikti klasorunuzu secebilirsiniz.
-3. "Donusturmeyi Baslat" butonuna basin. Ilerleme ve olasi hatalar alt
+3. Varsayilan olarak pakete gomulu `berat.xslt` sablonu kullanilir. Farkli
+   (ornegin guncellenmis) bir sablonla donusturmek isterseniz "Varsayilan
+   berat.xslt sablonunu kullan" isaretini kaldirip kendi `.xslt`/`.xsl`
+   dosyanizi secebilirsiniz.
+4. "Donusturmeyi Baslat" butonuna basin. Ilerleme ve olasi hatalar alt
    kisimdaki listede gorunur; islem sirasinda pencere kilitlenmez.
-4. Bitince ozet (kac dosya basarili/hatali) bir pencerede gosterilir.
+5. Bitince ozet (kac dosya basarili/hatali) bir pencerede gosterilir.
 
 Bir dosyada hata olusursa (ornegin XML bozuksa veya sema disi bir yapidaysa)
 islem durmaz, o dosya "hatali" olarak isaretlenip diger dosyalarla devam edilir.
