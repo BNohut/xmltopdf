@@ -58,11 +58,11 @@ calistirmada uyarir. Cozumu:
 
 ### Boyut ve ilk acilis hakkinda
 
-Paket, icine gomulu bir tarayici (Chromium, PDF olusturmak icin) ve bir XSLT
-motoru icerdigi icin indirme boyutu buyuktur (yaklasik 700-900 MB). Bu
-sayede kurulumdan sonra **internet baglantisina gerek kalmaz** - tum
-bilesenler paketin icindedir. Ilk acilista bilgisayarin hizina gore bir-iki
-saniye surebilir, bu normaldir.
+Paket, icine gomulu bir tarayici (Chromium headless-shell, PDF olusturmak
+icin) ve bir XSLT motoru icerdigi icin indirme boyutu buyukce (zip olarak
+macOS'ta ~175 MB, Windows'ta ~205 MB). Bu sayede kurulumdan sonra **internet
+baglantisina gerek kalmaz** - tum bilesenler paketin icindedir. Ilk acilista
+bilgisayarin hizina gore bir-iki saniye surebilir, bu normaldir.
 
 ## Programin kullanimi
 
