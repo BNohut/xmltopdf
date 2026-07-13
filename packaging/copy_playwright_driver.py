@@ -2,10 +2,18 @@
 
 xmltopdf.spec, playwright'in 'driver/' klasorunu (node calistiricisi +
 PLAYWRIGHT_BROWSERS_PATH=0 ile onceden indirilmis Chromium) bilerek haric
-tutar (bkz. hooks/hook-playwright.*.py): Chromium'un ic ice (.app icinde
-.app) yapisi, PyInstaller'in otomatik codesign adimini bozuyor. Bu script o
-klasoru derleme ciktisina, dosyalari (ozellikle macOS'ta Google'in kendi
-imzasini) bozmadan kopyalar.
+tutar (bkz. hooks/hook-playwright.*.py ve spec'teki _without_playwright_driver
+guvenlik filtresi): Chromium'un ic ice (.app icinde .app) yapisi,
+PyInstaller'in otomatik codesign adimini bozuyor. Bu script o klasoru
+derleme ciktisina, dosyalari (ozellikle macOS'ta Google'in kendi imzasini)
+bozmadan kopyalar.
+
+Hedef klasor, PyInstaller'in dokumante ettigi sabit yerlesime gore
+DOGRUDAN hesaplanir (bir "playwright" klasoru aramaya calismak, ayni
+klasorun bazi PyInstaller surumlerinde birden fazla - biri bozuk/yaridan
+kalma - kopyasinin olusabilmesi yuzunden guvenilir degil):
+  - macOS (.app):      <bundle>.app/Contents/Resources   (sys._MEIPASS ile ayni)
+  - Windows (onedir):  <bundle>/_internal                (sys._MEIPASS ile ayni)
 
 Kullanim:
     python packaging/copy_playwright_driver.py "dist/<AppName>.app"   (macOS)
@@ -22,28 +30,10 @@ from pathlib import Path
 import playwright
 
 
-def find_bundle_playwright_dir(bundle_root: Path) -> Path | None:
-    """'playwright' adinda, icinde 'py.typed' bulunan (yani gercekten
-    playwright paketinin veri dosyalarinin durdugu) klasoru bulur.
-
-    __init__.py gibi .py dosyalari PYZ arsivine gomuldugu icin diskte gercek
-    dosya olarak durmaz; 'py.typed' ise collect_data_files(include_py_files=
-    False) ile hep diskte kalir, bu yuzden guvenilir bir referans noktasidir.
-
-    macOS'ta PyInstaller surumune gore Contents/Resources/playwright gercek
-    klasor, Contents/Frameworks/playwright ona symlink olabilir (ya da PyInstaller
-    surumune gore bunun tersi de olabilir) - hangi yoldan bulunursa bulunsun
-    .resolve() ile ayni fiziksel klasore indirgenip tekillestirilir.
-    """
-    resolved = set()
-    for candidate in bundle_root.rglob("playwright"):
-        if candidate.is_dir() and (candidate / "py.typed").is_file():
-            resolved.add(candidate.resolve())
-    if not resolved:
-        return None
-    if len(resolved) > 1:
-        print(f"UYARI: birden fazla playwright klasoru bulundu, ilki kullanilacak: {sorted(resolved)}")
-    return sorted(resolved)[0]
+def meipass_equivalent(bundle_root: Path) -> Path:
+    if sys.platform == "darwin":
+        return bundle_root / "Contents" / "Resources"
+    return bundle_root / "_internal"
 
 
 def main() -> int:
@@ -65,21 +55,29 @@ def main() -> int:
         )
         return 1
 
-    playwright_dir = find_bundle_playwright_dir(bundle_root)
-    if playwright_dir is None:
-        print(f"HATA: {bundle_root} icinde paketlenmis playwright klasoru bulunamadi.")
+    base = meipass_equivalent(bundle_root)
+    if not base.is_dir():
+        print(f"HATA: beklenen taban klasor bulunamadi: {base}")
         return 1
 
-    dest = playwright_dir / "driver"
+    dest = base / "playwright" / "driver"
     print(f"Kopyalaniyor: {driver_src} -> {dest}")
+
+    # Onceki (basarisiz) bir derleme denemesinden veya PyInstaller'in kismi
+    # dahil ettigi bir kalinti varsa, temiz baslamak icin once silinir.
+    if dest.exists() or dest.is_symlink():
+        if dest.is_dir() and not dest.is_symlink():
+            shutil.rmtree(dest)
+        else:
+            dest.unlink()
+
+    dest.parent.mkdir(parents=True, exist_ok=True)
 
     if sys.platform == "darwin":
         # ditto, .app/.framework yapilarini ve kod imzalarini cp -R'den
         # daha guvenilir korur.
         subprocess.run(["ditto", str(driver_src), str(dest)], check=True)
     else:
-        if dest.exists():
-            shutil.rmtree(dest)
         shutil.copytree(driver_src, dest)
 
     print("Tamamlandi.")

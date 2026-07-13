@@ -78,6 +78,25 @@ a = Analysis(
     cipher=block_cipher,
 )
 
+
+def _without_playwright_driver(entries):
+    """hooks/hook-playwright.*.py bazi PyInstaller/surum kombinasyonlarinda
+    gecersiz kilinmayabiliyor (birden fazla hook kaynagi ayni ada sahip
+    olabiliyor). Bu yuzden hangi hook eklemis olursa olsun, TOC'a son bir
+    guvenlik agi olarak 'driver' gecen her girdiyi (node calistiricisi +
+    Chromium) burada temizliyoruz; o klasor derlemeden SONRA
+    packaging/copy_playwright_driver.py ile ayri kopyalanacak."""
+    return [
+        entry
+        for entry in entries
+        if "driver" not in entry[0].replace("\\", "/").lower()
+        and "driver" not in entry[1].replace("\\", "/").lower()
+    ]
+
+
+a.datas = _without_playwright_driver(a.datas)
+a.binaries = _without_playwright_driver(a.binaries)
+
 pyz = PYZ(a.pure, a.zipped_data, cipher=block_cipher)
 
 exe = EXE(
