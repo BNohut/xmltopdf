@@ -36,6 +36,34 @@ def meipass_equivalent(bundle_root: Path) -> Path:
     return bundle_root / "_internal"
 
 
+# Playwright 'chromium' kurulduğunda beraberinde birkac bagimsiz bilesim
+# daha indirir, ama biz sadece duz p.chromium.launch() (headless=True,
+# kanal belirtmeden) + page.pdf() kullaniyoruz. Test ederek dogrulandi:
+# - "chromium-*" (tam Chrome for Testing, ~344 MB): launch(headless=True)
+#   ozel bir kanal belirtilmedigi surece BUNU DEGIL, headless-shell'i
+#   kullaniyor - kullanilmiyor.
+# - "ffmpeg-*": sadece video kaydi (record_video_dir) icin, hic kullanilmiyor.
+# "chromium_headless_shell-*" GERCEKTEN kullanildigi icin (asil PDF uretimi
+# bunun uzerinden yapiliyor) buraya DAHIL EDILMEDI.
+UNUSED_BROWSER_GLOBS = ["chromium-*", "ffmpeg-*"]
+
+
+def _dir_size(path: Path) -> int:
+    return sum(f.stat().st_size for f in path.rglob("*") if f.is_file())
+
+
+def prune_unused_browsers(driver_dest: Path) -> None:
+    local_browsers = driver_dest / "package" / ".local-browsers"
+    if not local_browsers.is_dir():
+        return
+    for pattern in UNUSED_BROWSER_GLOBS:
+        for match in local_browsers.glob(pattern):
+            if match.is_dir():
+                size_mb = _dir_size(match) / 1024 / 1024
+                print(f"Kullanilmayan tarayici cikariliyor: {match.name} ({size_mb:.0f} MB)")
+                shutil.rmtree(match)
+
+
 def main() -> int:
     if len(sys.argv) != 2:
         print("Kullanim: copy_playwright_driver.py <paketlenmis-app-klasoru>")
@@ -77,6 +105,7 @@ def main() -> int:
         # ditto, .app/.framework yapilarini ve kod imzalarini cp -R'den
         # daha guvenilir korur.
         subprocess.run(["ditto", str(driver_src), str(dest)], check=True)
+        prune_unused_browsers(dest)
 
         # PyInstaller, BUNDLE adiminda .app'i ZATEN imzalamisti (icindekilerin
         # bir "muhur"unu olusturdu). Buraya sonradan dosya eklemek o muhuru
@@ -104,6 +133,7 @@ def main() -> int:
         print("Imza dogrulandi.")
     else:
         shutil.copytree(driver_src, dest)
+        prune_unused_browsers(dest)
 
     print("Tamamlandi.")
     return 0
