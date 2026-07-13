@@ -23,18 +23,27 @@ import playwright
 
 
 def find_bundle_playwright_dir(bundle_root: Path) -> Path | None:
-    if sys.platform == "darwin":
-        # .app bundle'da gercek dosyalar Contents/Resources altinda durur
-        # (Contents/Frameworks/playwright bunun icin sadece bir symlink'tir).
-        for candidate in bundle_root.rglob("Contents/Resources/playwright"):
-            if candidate.is_dir():
-                return candidate
-        return None
+    """'playwright' adinda, icinde 'py.typed' bulunan (yani gercekten
+    playwright paketinin veri dosyalarinin durdugu) klasoru bulur.
 
+    __init__.py gibi .py dosyalari PYZ arsivine gomuldugu icin diskte gercek
+    dosya olarak durmaz; 'py.typed' ise collect_data_files(include_py_files=
+    False) ile hep diskte kalir, bu yuzden guvenilir bir referans noktasidir.
+
+    macOS'ta PyInstaller surumune gore Contents/Resources/playwright gercek
+    klasor, Contents/Frameworks/playwright ona symlink olabilir (ya da PyInstaller
+    surumune gore bunun tersi de olabilir) - hangi yoldan bulunursa bulunsun
+    .resolve() ile ayni fiziksel klasore indirgenip tekillestirilir.
+    """
+    resolved = set()
     for candidate in bundle_root.rglob("playwright"):
-        if candidate.is_dir() and (candidate / "_impl").is_dir():
-            return candidate
-    return None
+        if candidate.is_dir() and (candidate / "py.typed").is_file():
+            resolved.add(candidate.resolve())
+    if not resolved:
+        return None
+    if len(resolved) > 1:
+        print(f"UYARI: birden fazla playwright klasoru bulundu, ilki kullanilacak: {sorted(resolved)}")
+    return sorted(resolved)[0]
 
 
 def main() -> int:
