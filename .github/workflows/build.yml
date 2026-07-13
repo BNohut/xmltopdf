@@ -76,9 +76,12 @@ jobs:
       - name: Selftest (paketlenmis binary gercekten PDF uretebiliyor mu?)
         shell: pwsh
         run: |
-          & "dist\${{ env.APP_NAME }}\${{ env.APP_NAME }}.exe" --selftest
-          if ($LASTEXITCODE -ne 0) { throw "selftest exit code $LASTEXITCODE" }
+          # console=False (pencereli/GUI) exe icin $LASTEXITCODE guvenilir
+          # degil; Start-Process -Wait -PassThru ile kesin bekleyip gercek
+          # ExitCode'u okuyoruz.
+          $proc = Start-Process -FilePath "dist\${{ env.APP_NAME }}\${{ env.APP_NAME }}.exe" -ArgumentList "--selftest" -Wait -PassThru -NoNewWindow
           Get-Content selftest_result.txt
+          if ($proc.ExitCode -ne 0) { throw "selftest exit code $($proc.ExitCode)" }
 
       - name: Klasoru zip'le
         shell: pwsh
