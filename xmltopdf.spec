@@ -132,5 +132,5 @@ app = BUNDLE(
     coll,
     name=f"{APP_NAME}.app",
     icon=None,
-    bundle_identifier="com.rsservis.edefterberatidonusturucu",
+    bundle_identifier="com.xmltopdf.edefterberatidonusturucu",
 )
