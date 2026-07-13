@@ -7,3 +7,6 @@ dist/
 *.spec.bak
 PDF_Ciktilari/
 .claude/
+selftest_result.txt
+*.pkg
+

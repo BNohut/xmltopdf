@@ -17,8 +17,9 @@ from tkinter import filedialog, messagebox, scrolledtext
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from converter import OUTPUT_FOLDER_NAME, convert_folder, default_output_root  # noqa: E402
+from paths import resources_dir  # noqa: E402
 
-RESOURCES_DIR = Path(__file__).resolve().parent.parent / "resources"
+RESOURCES_DIR = resources_dir()
 DEFAULT_XSLT_PATH = RESOURCES_DIR / "berat.xslt"
 
 # macOS'ta sistemin eski Tk 8.5 surumu Dark Mode'da metin/arkaplan renklerini

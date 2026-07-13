@@ -5,13 +5,20 @@ Akis: XML --(XSLT 2.0, berat.xslt)--> HTML --(headless Chromium)--> PDF
 
 from __future__ import annotations
 
-import shutil
+import os
 from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Callable, Optional
 
-from saxonche import PySaxonProcessor
-from playwright.sync_api import sync_playwright
+# Paketlenmis (PyInstaller) build'lerde Chromium, playwright paketinin kendi
+# icine gomulur (bkz. xmltopdf.spec). PLAYWRIGHT_BROWSERS_PATH=0, playwright'a
+# tarayiciyi genel kullanici onbellegi yerine bu gomulu konumdan aramasini
+# soyler; ayni deger hem 'playwright install' sirasinda hem burada calisma
+# zamaninda kullanilmali. playwright import edilmeden ONCE ayarlanmali.
+os.environ.setdefault("PLAYWRIGHT_BROWSERS_PATH", "0")
+
+from saxonche import PySaxonProcessor  # noqa: E402
+from playwright.sync_api import sync_playwright  # noqa: E402
 
 OUTPUT_FOLDER_NAME = "PDF_Ciktilari"
 
